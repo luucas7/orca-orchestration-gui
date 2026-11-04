@@ -101,6 +101,10 @@ docs/**
 !docs/styleguide/**
 !docs/agents-md-refs/
 !docs/agents-md-refs/**
+!docs/agents/
+!docs/agents/**
+!docs/adr/
+!docs/adr/**
 !docs/agent-skill-sharing-implementation-checklist.md
 !docs/mobile-terminal-shortcut-bar.md
 
@@ -121,7 +125,11 @@ playwright-report/
 # Agent skills are installed per machine.
 /.claude/skills/
 /.agents/skills/
+/.hermes/
 /skills-lock.json
+
+# Scratch planning and artifacts
+/.scratch/
 
 # Generated Clawpatch state includes machine-local paths and review records.
 /.clawpatch/

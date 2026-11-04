@@ -64,3 +64,17 @@ Every change must consider these areas:
 ## Git / GitHub
 
 If changing code around `git`, `gh`, source-control, or review behavior read [`docs/agents-md-refs/git-workflow.md`](./docs/agents-md-refs/git-workflow.md).
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as GitHub issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default canonical triage roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context (`GLOSSARY.md` + `docs/adr/`). See `docs/agents/domain.md`.
