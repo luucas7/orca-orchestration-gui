@@ -190,6 +190,18 @@ declare module 'orca/host' {
       result: { ran: true }
       surfaces: "worker"
     }
+    /** Returns the scoped orchestration hierarchy for a selected or proposed Root Orchestrator. Since host API 1.2. */
+    "orchestration.getScopedGraph": {
+      params: { rootRunId?: string; rootHandle?: string } | undefined
+      result: { activeRootRunId: string | null; selectedRootRunId: string | null; roots: { runId: string; objective: string; coordinatorHandle: string | null; coordinatorOrcaSessionId: string | null; createdAt: string; status: string }[]; nodes: { id: string; name: string; cli: string; role: "root-orchestrator" | "orchestrator" | "worker"; shortTaskTitle: string; state: string; taskId: string | null; dispatchId: string | null; terminalHandle: string | null; orcaSessionId: string | null; parentId: string | null; depth: number }[]; edges: { from: string; to: string }[]; emptyReason: "no-runs" | "run-not-found" | "no-tasks" | "disabled" | "incompatible-host" | null }
+      surfaces: "worker" | "panel" | "editor"
+    }
+    /** Focuses the exact existing terminal session for an agent, restoring and revealing its pane without creating a duplicate PTY. Since host API 1.2. */
+    "orchestration.navigateTerminal": {
+      params: { terminalHandle: string }
+      result: { navigated: boolean; tabId: string | null; worktreeId: string | null }
+      surfaces: "panel" | "editor"
+    }
   }
   export type HostMethodName = keyof HostMethods
   /** Methods a surface may call; any other gets `not_permitted`. */

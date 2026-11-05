@@ -8,6 +8,7 @@ import { installPluginResidentWorkerWarmer } from './workers/plugin-resident-wor
 import type { OrcaRuntimeService } from '../runtime/orca-runtime'
 import { pluginRuntimeRpc } from './plugin-runtime-rpc'
 import type { PluginRuntimeRpc } from './workers/plugin-host-workspace-method-bindings'
+import type { OrchestrationDb } from '../runtime/orchestration/db'
 import {
   pluginTerminalTitle,
   projectPluginWorkspaceContext,
@@ -23,7 +24,10 @@ type PluginEvents = {
   wantsEvent(event: PluginEventName): boolean
 }
 
-type RuntimeDelegateSource = Omit<PluginRuntimeDelegate, 'listAgentStatuses' | 'callRuntime'>
+type RuntimeDelegateSource = Omit<
+  PluginRuntimeDelegate,
+  'listAgentStatuses' | 'callRuntime' | 'getOrchestrationDb'
+>
 
 const WORKSPACE_CHANGE_DEBOUNCE_MS = 150
 
@@ -31,10 +35,12 @@ const WORKSPACE_CHANGE_DEBOUNCE_MS = 150
 export function pluginRuntimeDelegate(
   runtime: RuntimeDelegateSource,
   agentStatuses: () => readonly PluginAgentStatusRow[],
-  callRuntime?: PluginRuntimeRpc
+  callRuntime?: PluginRuntimeRpc,
+  getOrchestrationDb?: () => OrchestrationDb | null
 ): PluginRuntimeDelegate {
   return {
     ...(callRuntime ? { callRuntime } : {}),
+    ...(getOrchestrationDb ? { getOrchestrationDb } : {}),
     resolveActiveWorktreeContext: () => runtime.resolveActiveWorktreeContext(),
     listTerminals: (...args) => runtime.listTerminals(...args),
     sendTerminal: (...args) => runtime.sendTerminal(...args),
@@ -50,7 +56,9 @@ export function bindPluginRuntime(
   hookServer: { getStatusSnapshot(): readonly PluginAgentStatusRow[] }
 ): PluginRuntimeDelegate {
   const statuses = () => hookServer.getStatusSnapshot()
-  const delegate = pluginRuntimeDelegate(runtime, statuses, pluginRuntimeRpc(runtime))
+  const delegate = pluginRuntimeDelegate(runtime, statuses, pluginRuntimeRpc(runtime), () =>
+    runtime.getExistingOrchestrationDb()
+  )
   service.setRuntimeDelegate(delegate)
   installPluginHookRunner(service, runtime)
   installPluginResidentWorkerWarmer(service)

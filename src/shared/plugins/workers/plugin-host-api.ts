@@ -3,6 +3,7 @@ import type { PluginSurface } from '../frames/plugin-protocol'
 import * as stored from './plugin-host-api-storage-schemas'
 import { PLUGIN_PANEL_BRIDGE_API } from './plugin-host-api-panel-methods'
 import { PLUGIN_WORKER_ACTIONS_API } from './plugin-host-api-worker-actions'
+import { PLUGIN_ORCHESTRATION_HOST_API } from './plugin-host-api-orchestration'
 import {
   ALL_SURFACES,
   FRAMES_ONLY,
@@ -74,12 +75,7 @@ const notificationsShowParams = z.strictObject({
 })
 const notificationsShowResult = z.object({ delivered: z.boolean() })
 
-export {
-  PLUGIN_STORAGE_KEY_LIMIT,
-  PLUGIN_STORAGE_TOTAL_MAX_BYTES,
-  PLUGIN_STORAGE_VALUE_MAX_BYTES,
-  type PluginJsonValue
-} from './plugin-host-api-storage-schemas'
+export * from './plugin-host-api-storage-schemas'
 
 /** Frame methods that only run on a click or key press in the frame (`userActivation`). */
 export const PLUGIN_FRAME_USER_METHODS = {
@@ -301,7 +297,8 @@ export const PLUGIN_HOST_API = {
     result: filesSaveAsResult
   }),
   ...PLUGIN_PANEL_BRIDGE_API,
-  ...PLUGIN_WORKER_ACTIONS_API
+  ...PLUGIN_WORKER_ACTIONS_API,
+  ...PLUGIN_ORCHESTRATION_HOST_API
 }
 
 export type PluginHostApi = typeof PLUGIN_HOST_API

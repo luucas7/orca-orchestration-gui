@@ -1,0 +1,24 @@
+{
+  "manifestVersion": 2,
+  "id": "orca-orchestration-view",
+  "publisher": "stablyai",
+  "name": "Orchestration",
+  "version": "1.0.0",
+  "execution": "sandboxed-ui",
+  "description": "Visual orchestration hierarchy with exact terminal navigation",
+  "engines": {
+    "orca": ">=1.4.246"
+  },
+  "pluginApi": 1,
+  "contributes": {
+    "panels": [
+      {
+        "id": "orchestration-graph",
+        "title": "Orchestration",
+        "icon": "branch",
+        "entry": "panel/index.html"
+      }
+    ]
+  },
+  "capabilities": []
+}

@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orchestration Graph</title>
+  <style>
+    :root {
+      --bg: var(--orca-background);
+      --fg: var(--orca-foreground);
+      --card: var(--orca-card);
+      --card-fg: var(--orca-card-foreground);
+      --muted: var(--orca-muted);
+      --muted-fg: var(--orca-muted-foreground);
+      --border: var(--orca-border);
+      --ring: var(--orca-ring);
+      --primary: var(--orca-primary);
+      --primary-fg: var(--orca-primary-foreground);
+      --accent: var(--orca-accent);
+      --accent-fg: var(--orca-accent-foreground);
+      --radius: var(--orca-radius, 6px);
+      --font-mono: var(--orca-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+      --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.4;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Toolbar */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .toolbar-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      color: var(--muted-fg);
+      white-space: nowrap;
+    }
+
+    #root-select {
+      flex: 1;
+      min-width: 0;
+      max-width: 240px;
+      background: var(--card);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 3px 6px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #root-select:focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 1px;
+    }
+
+    .btn-toolbar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 8px;
+      background: var(--card);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 12px;
+      cursor: pointer;
+      line-height: 1.2;
+      transition: background 0.1s ease;
+    }
+
+    .btn-toolbar:hover {
+      background: var(--accent);
+      color: var(--accent-fg);
+    }
+
+    .btn-toolbar:focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 1px;
+    }
+
+    .btn-toolbar:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Alert Banner */
+    #alert-banner {
+      display: none;
+      padding: 6px 12px;
+      background: color-mix(in srgb, var(--orca-destructive, #ef4444) 15%, var(--bg));
+      color: var(--fg);
+      border-bottom: 1px solid color-mix(in srgb, var(--orca-destructive, #ef4444) 30%, transparent);
+      font-size: 12px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      z-index: 20;
+    }
+
+    #alert-banner.active {
+      display: flex;
+    }
+
+    #alert-dismiss {
+      background: none;
+      border: none;
+      color: var(--muted-fg);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+
+    #alert-dismiss:hover {
+      color: var(--fg);
+    }
+
+    /* Viewport & Canvas */
+    #viewport {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #viewport.dragging {
+      cursor: grabbing;
+    }
+
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    #edge-svg {
+      position: absolute;
+      top: -5000px;
+      left: -5000px;
+      width: 15000px;
+      height: 15000px;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .edge-path {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 1.5px;
+      stroke-linecap: round;
+    }
+
+    #node-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    /* Node Card */
+    .node-card {
+      position: absolute;
+      width: 250px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: var(--orca-shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.05));
+      cursor: pointer;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .node-card:focus-visible,
+    .node-card.selected {
+      outline: 2px solid var(--ring);
+      outline-offset: 1px;
+      border-color: var(--ring);
+    }
+
+    .node-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .badge-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border: 1px solid transparent;
+      line-height: 1.2;
+    }
+
+    .badge-role {
+      background: color-mix(in srgb, var(--primary) 15%, var(--card));
+      color: var(--fg);
+      border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+    }
+
+    .badge-cli {
+      background: var(--muted);
+      color: var(--muted-fg);
+      font-family: var(--font-mono);
+      font-size: 9px;
+    }
+
+    .badge-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--muted-fg);
+    }
+
+    .state-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted-fg);
+    }
+
+    .state-dot.running,
+    .state-dot.working {
+      background: #22c55e;
+    }
+
+    .state-dot.completed,
+    .state-dot.done {
+      background: var(--muted-fg);
+    }
+
+    .state-dot.failed,
+    .state-dot.blocked {
+      background: #ef4444;
+    }
+
+    .state-dot.paused,
+    .state-dot.pending,
+    .state-dot.waiting {
+      background: #eab308;
+    }
+
+    .node-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--fg);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .node-task {
+      font-size: 12px;
+      color: var(--muted-fg);
+      line-height: 1.3;
+      word-break: break-word;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .node-identities {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 2px;
+      padding-top: 4px;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted-fg);
+    }
+
+    .identity-row {
+      display: flex;
+      justify-content: space-between;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      gap: 6px;
+    }
+
+    .identity-row .key {
+      color: var(--muted-fg);
+      opacity: 0.8;
+      font-weight: 500;
+    }
+
+    .identity-row .val {
+      color: var(--fg);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .node-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .btn-terminal {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      background: var(--primary);
+      color: var(--primary-fg);
+      border: none;
+      border-radius: var(--radius);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-terminal:hover {
+      opacity: 0.9;
+    }
+
+    .btn-terminal:focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 1px;
+    }
+
+    .btn-fold {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      background: var(--muted);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-fold:hover {
+      background: var(--accent);
+    }
+
+    .btn-fold:focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 1px;
+    }
+
+    /* States / Overlays */
+    .overlay-state {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: var(--bg);
+      z-index: 5;
+      gap: 8px;
+    }
+
+    .overlay-state.active {
+      display: flex;
+    }
+
+    .overlay-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--fg);
+    }
+
+    .overlay-desc {
+      font-size: 12px;
+      color: var(--muted-fg);
+      max-width: 320px;
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header / Toolbar -->
+  <header id="toolbar">
+    <span class="toolbar-label">Root:</span>
+    <select id="root-select" aria-label="Root Orchestrator">
+      <option value="">No active runs</option>
+    </select>
+    <button id="btn-refresh" class="btn-toolbar" title="Refresh graph" aria-label="Refresh graph">Refresh</button>
+    <button id="btn-zoom-in" class="btn-toolbar" title="Zoom in" aria-label="Zoom in">+</button>
+    <button id="btn-zoom-out" class="btn-toolbar" title="Zoom out" aria-label="Zoom out">−</button>
+    <button id="btn-fit-view" class="btn-toolbar" title="Fit to view" aria-label="Fit view">Fit</button>
+  </header>
+
+  <!-- Alert Banner -->
+  <aside id="alert-banner" role="alert">
+    <span id="alert-message"></span>
+    <button id="alert-dismiss" aria-label="Dismiss alert">✕</button>
+  </aside>
+
+  <!-- Graph Viewport -->
+  <main id="viewport" tabindex="0" role="region" aria-label="Orchestration Graph Viewport">
+    <div id="canvas">
+      <svg id="edge-svg"></svg>
+      <div id="node-container" role="tree" aria-label="Orchestration Hierarchy"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="overlay-state">
+      <div class="overlay-title">No Orchestration Runs</div>
+      <div class="overlay-desc" id="empty-state-message">No active orchestration runs or tasks found.</div>
+    </div>
+
+    <!-- Incompatible Host State -->
+    <div id="incompatible-state" class="overlay-state">
+      <div class="overlay-title">Incompatible Host</div>
+      <div class="overlay-desc">The orchestration graph API is not available on this host.</div>
+    </div>
+
+    <!-- Disabled State -->
+    <div id="disabled-state" class="overlay-state">
+      <div class="overlay-title">Orchestration View Disabled</div>
+      <div class="overlay-desc" id="disabled-state-message">The orchestration feature is currently disabled in your workspace settings.</div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = 'orca_orchestration_view_state';
+
+      // State
+      let graphData = null;
+      let selectedRootRunId = null;
+      let foldedNodeIds = new Set();
+      let selectedNodeId = null;
+      let camera = { x: 40, y: 40, zoom: 1 };
+      let isDragging = false;
+      let dragStart = { x: 0, y: 0 };
+      let dragOrigin = { x: 0, y: 0 };
+
+      // DOM Elements
+      const rootSelect = document.getElementById('root-select');
+      const btnRefresh = document.getElementById('btn-refresh');
+      const btnZoomIn = document.getElementById('btn-zoom-in');
+      const btnZoomOut = document.getElementById('btn-zoom-out');
+      const btnFitView = document.getElementById('btn-fit-view');
+      const alertBanner = document.getElementById('alert-banner');
+      const alertMessage = document.getElementById('alert-message');
+      const alertDismiss = document.getElementById('alert-dismiss');
+      const viewport = document.getElementById('viewport');
+      const canvas = document.getElementById('canvas');
+      const edgeSvg = document.getElementById('edge-svg');
+      const nodeContainer = document.getElementById('node-container');
+      const emptyState = document.getElementById('empty-state');
+      const emptyStateMessage = document.getElementById('empty-state-message');
+      const incompatibleState = document.getElementById('incompatible-state');
+      const disabledState = document.getElementById('disabled-state');
+
+      // Storage
+      function loadPersistedState() {
+        try {
+          const raw = sessionStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.selectedRootRunId) selectedRootRunId = parsed.selectedRootRunId;
+            if (Array.isArray(parsed.foldedNodeIds)) foldedNodeIds = new Set(parsed.foldedNodeIds);
+            if (parsed.selectedNodeId) selectedNodeId = parsed.selectedNodeId;
+            if (parsed.camera && typeof parsed.camera.x === 'number') {
+              camera = {
+                x: parsed.camera.x,
+                y: parsed.camera.y,
+                zoom: Math.min(Math.max(parsed.camera.zoom || 1, 0.2), 3)
+              };
+            }
+          }
+        } catch (_) {}
+      }
+
+      function persistState() {
+        try {
+          const data = {
+            selectedRootRunId,
+            foldedNodeIds: Array.from(foldedNodeIds),
+            selectedNodeId,
+            camera
+          };
+          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (_) {}
+      }
+
+      function showAlert(msg) {
+        alertMessage.textContent = msg;
+        alertBanner.classList.add('active');
+      }
+
+      function dismissAlert() {
+        alertBanner.classList.remove('active');
+      }
+
+      alertDismiss.addEventListener('click', dismissAlert);
+
+      // Camera Transform
+      function updateCanvasTransform() {
+        canvas.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`;
+      }
+
+      function setZoom(newZoom, centerX, centerY) {
+        const clamped = Math.min(Math.max(newZoom, 0.2), 3);
+        if (centerX !== undefined && centerY !== undefined) {
+          const factor = clamped / camera.zoom;
+          camera.x = centerX - (centerX - camera.x) * factor;
+          camera.y = centerY - (centerY - camera.y) * factor;
+        }
+        camera.zoom = clamped;
+        updateCanvasTransform();
+        persistState();
+      }
+
+      // Pan & Zoom Events
+      viewport.addEventListener('pointerdown', function (e) {
+        if (e.target.closest('.node-card') || e.target.closest('button') || e.target.closest('select')) {
+          return;
+        }
+        isDragging = true;
+        dragStart = { x: e.clientX, y: e.clientY };
+        dragOrigin = { x: camera.x, y: camera.y };
+        viewport.classList.add('dragging');
+        viewport.setPointerCapture(e.pointerId);
+      });
+
+      viewport.addEventListener('pointermove', function (e) {
+        if (!isDragging) return;
+        camera.x = dragOrigin.x + (e.clientX - dragStart.x);
+        camera.y = dragOrigin.y + (e.clientY - dragStart.y);
+        updateCanvasTransform();
+      });
+
+      function endDrag(e) {
+        if (isDragging) {
+          isDragging = false;
+          viewport.classList.remove('dragging');
+          try { viewport.releasePointerCapture(e.pointerId); } catch (_) {}
+          persistState();
+        }
+      }
+
+      viewport.addEventListener('pointerup', endDrag);
+      viewport.addEventListener('pointercancel', endDrag);
+
+      viewport.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        const zoomDelta = e.deltaY < 0 ? 1.15 : 0.85;
+        setZoom(camera.zoom * zoomDelta, cx, cy);
+      }, { passive: false });
+
+      btnZoomIn.addEventListener('click', function () {
+        const rect = viewport.getBoundingClientRect();
+        setZoom(camera.zoom * 1.25, rect.width / 2, rect.height / 2);
+      });
+
+      btnZoomOut.addEventListener('click', function () {
+        const rect = viewport.getBoundingClientRect();
+        setZoom(camera.zoom * 0.8, rect.width / 2, rect.height / 2);
+      });
+
+      btnFitView.addEventListener('click', function () {
+        fitView();
+      });
+
+      function fitView() {
+        const nodes = Array.from(nodeContainer.querySelectorAll('.node-card'));
+        if (nodes.length === 0) return;
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        nodes.forEach(el => {
+          const x = parseFloat(el.getAttribute('data-x') || '0');
+          const y = parseFloat(el.getAttribute('data-y') || '0');
+          const w = 250;
+          const h = el.offsetHeight || 130;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x + w);
+          maxY = Math.max(maxY, y + h);
+        });
+
+        const rect = viewport.getBoundingClientRect();
+        const padding = 40;
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        if (width <= 0 || height <= 0) return;
+
+        const scaleX = (rect.width - padding * 2) / width;
+        const scaleY = (rect.height - padding * 2) / height;
+        const fitScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.25), 1.2);
+
+        camera.zoom = fitScale;
+        camera.x = (rect.width - width * fitScale) / 2 - minX * fitScale;
+        camera.y = (rect.height - height * fitScale) / 2 - minY * fitScale;
+
+        updateCanvasTransform();
+        persistState();
+      }
+
+      // Terminal Navigation
+      async function navigateToTerminal(handle) {
+        if (!handle) return;
+        persistState();
+        try {
+          if (!window.orca || !window.orca.host || !window.orca.host.call) {
+            showAlert('Plugin host is not connected.');
+            return;
+          }
+          const res = await window.orca.host.call('orchestration.navigateTerminal', { terminalHandle: handle });
+          if (!res || !res.navigated) {
+            showAlert(`Could not navigate to terminal ${handle}`);
+          }
+        } catch (err) {
+          showAlert(`Terminal is unavailable or exited: ${err && err.message ? err.message : String(err)}`);
+        }
+      }
+
+      // Layout & Render DAG
+      function renderGraph() {
+        nodeContainer.innerHTML = '';
+        edgeSvg.innerHTML = '';
+
+        if (graphData && graphData.emptyReason === 'incompatible-host') {
+          incompatibleState.classList.add('active');
+          disabledState.classList.remove('active');
+          emptyState.classList.remove('active');
+          return;
+        }
+
+        if (graphData && graphData.emptyReason === 'disabled') {
+          disabledState.classList.add('active');
+          incompatibleState.classList.remove('active');
+          emptyState.classList.remove('active');
+          return;
+        }
+
+        if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
+          emptyState.classList.add('active');
+          incompatibleState.classList.remove('active');
+          disabledState.classList.remove('active');
+          const title = emptyState.querySelector('.overlay-title');
+          if (graphData && graphData.emptyReason === 'run-not-found') {
+            if (title) title.textContent = 'Orchestration Run Not Found';
+            emptyStateMessage.textContent = 'The requested run was not found (unknown target). It may have been closed or removed.';
+          } else if (graphData && graphData.emptyReason === 'no-tasks') {
+            if (title) title.textContent = 'No Tasks Delegated';
+            emptyStateMessage.textContent = 'No tasks or sub-agents running in this orchestration run.';
+          } else {
+            if (title) title.textContent = 'No Orchestration Runs';
+            emptyStateMessage.textContent = 'No active orchestration runs found in this workspace.';
+          }
+          return;
+        }
+
+        emptyState.classList.remove('active');
+        incompatibleState.classList.remove('active');
+        disabledState.classList.remove('active');
+
+        // Build adjacency & tree structure
+        const nodesById = new Map();
+        const childrenMap = new Map();
+        const roots = [];
+
+        graphData.nodes.forEach(n => {
+          nodesById.set(n.id, n);
+          childrenMap.set(n.id, []);
+        });
+
+        graphData.nodes.forEach(n => {
+          if (n.parentId && nodesById.has(n.parentId)) {
+            childrenMap.get(n.parentId).push(n.id);
+          } else {
+            roots.push(n.id);
+          }
+        });
+
+        // Visible nodes based on folding
+        const visibleNodes = new Set();
+        function markVisible(nodeId) {
+          visibleNodes.add(nodeId);
+          if (!foldedNodeIds.has(nodeId)) {
+            (childrenMap.get(nodeId) || []).forEach(markVisible);
+          }
+        }
+        roots.forEach(markVisible);
+
+        // Simple Tidy Layered Tree Layout
+        // Nodes spaced by level (Y: 170px per depth) and X by leaf indexing
+        const nodePositions = new Map();
+        const CARD_WIDTH = 250;
+        const HORIZONTAL_GAP = 30;
+        const VERTICAL_GAP = 180;
+        let currentLeafX = 40;
+
+        function positionSubtree(nodeId, depth) {
+          const children = (childrenMap.get(nodeId) || []).filter(c => visibleNodes.has(c));
+          const y = 40 + depth * VERTICAL_GAP;
+
+          if (children.length === 0) {
+            const x = currentLeafX;
+            currentLeafX += CARD_WIDTH + HORIZONTAL_GAP;
+            nodePositions.set(nodeId, { x, y });
+            return x;
+          }
+
+          let sumX = 0;
+          children.forEach(childId => {
+            sumX += positionSubtree(childId, depth + 1);
+          });
+          const avgX = sumX / children.length;
+          nodePositions.set(nodeId, { x: avgX, y });
+          return avgX;
+        }
+
+        roots.filter(r => visibleNodes.has(r)).forEach(r => positionSubtree(r, 0));
+
+        // Render Edges
+        visibleNodes.forEach(nodeId => {
+          const parentPos = nodePositions.get(nodeId);
+          if (!parentPos) return;
+
+          const children = (childrenMap.get(nodeId) || []).filter(c => visibleNodes.has(c));
+          children.forEach(childId => {
+            const childPos = nodePositions.get(childId);
+            if (!childPos) return;
+
+            const x1 = parentPos.x + CARD_WIDTH / 2;
+            const y1 = parentPos.y + 130;
+            const x2 = childPos.x + CARD_WIDTH / 2;
+            const y2 = childPos.y;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const midY = (y1 + y2) / 2;
+            path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+            path.setAttribute('class', 'edge-path');
+            edgeSvg.appendChild(path);
+          });
+        });
+
+        // Render Node Cards
+        visibleNodes.forEach(nodeId => {
+          const node = nodesById.get(nodeId);
+          const pos = nodePositions.get(nodeId);
+          if (!node || !pos) return;
+
+          const card = document.createElement('div');
+          card.className = 'node-card' + (node.id === selectedNodeId ? ' selected' : '');
+          card.id = `node-${node.id}`;
+          card.tabIndex = 0;
+          card.role = 'treeitem';
+          card.setAttribute('aria-label', `${node.name} (${node.role})`);
+          card.setAttribute('data-node-id', node.id);
+          card.setAttribute('data-x', String(pos.x));
+          card.setAttribute('data-y', String(pos.y));
+          card.style.left = `${pos.x}px`;
+          card.style.top = `${pos.y}px`;
+
+          // Header
+          const header = document.createElement('div');
+          header.className = 'node-header';
+
+          const badgeGroup = document.createElement('div');
+          badgeGroup.className = 'badge-group';
+
+          const roleBadge = document.createElement('span');
+          roleBadge.className = 'badge badge-role';
+          roleBadge.textContent = node.role === 'root-orchestrator' ? 'Root' : node.role === 'orchestrator' ? 'Orchestrator' : 'Worker';
+
+          const cliBadge = document.createElement('span');
+          cliBadge.className = 'badge badge-cli';
+          cliBadge.textContent = node.cli || 'cli';
+
+          badgeGroup.appendChild(roleBadge);
+          badgeGroup.appendChild(cliBadge);
+
+          const stateBadge = document.createElement('div');
+          stateBadge.className = 'badge-state';
+          const stateDot = document.createElement('span');
+          stateDot.className = `state-dot ${node.state}`;
+          const stateText = document.createElement('span');
+          stateText.textContent = node.state;
+          stateBadge.appendChild(stateDot);
+          stateBadge.appendChild(stateText);
+
+          header.appendChild(badgeGroup);
+          header.appendChild(stateBadge);
+          card.appendChild(header);
+
+          // Title & Task
+          const title = document.createElement('div');
+          title.className = 'node-title';
+          title.textContent = node.name;
+          card.appendChild(title);
+
+          if (node.shortTaskTitle) {
+            const task = document.createElement('div');
+            task.className = 'node-task';
+            task.textContent = node.shortTaskTitle;
+            card.appendChild(task);
+          }
+
+          // Identities (Task, Dispatch, Terminal, Session)
+          const identities = document.createElement('div');
+          identities.className = 'node-identities';
+
+          if (node.taskId) {
+            const row = document.createElement('div');
+            row.className = 'identity-row';
+            row.innerHTML = `<span class="key">Task:</span><span class="val" title="${node.taskId}">${node.taskId}</span>`;
+            identities.appendChild(row);
+          }
+
+          if (node.dispatchId) {
+            const row = document.createElement('div');
+            row.className = 'identity-row';
+            row.innerHTML = `<span class="key">Dispatch:</span><span class="val" title="${node.dispatchId}">${node.dispatchId}</span>`;
+            identities.appendChild(row);
+          }
+
+          if (node.terminalHandle) {
+            const row = document.createElement('div');
+            row.className = 'identity-row';
+            row.innerHTML = `<span class="key">Terminal:</span><span class="val" title="${node.terminalHandle}">${node.terminalHandle}</span>`;
+            identities.appendChild(row);
+          }
+
+          if (node.orcaSessionId) {
+            const row = document.createElement('div');
+            row.className = 'identity-row';
+            row.innerHTML = `<span class="key">Session:</span><span class="val" title="${node.orcaSessionId}">${node.orcaSessionId}</span>`;
+            identities.appendChild(row);
+          }
+
+          card.appendChild(identities);
+
+          // Actions
+          const actions = document.createElement('div');
+          actions.className = 'node-actions';
+
+          if (node.terminalHandle) {
+            const btnTerm = document.createElement('button');
+            btnTerm.className = 'btn-terminal';
+            btnTerm.textContent = 'Open Terminal';
+            btnTerm.setAttribute('data-terminal', node.terminalHandle);
+            btnTerm.addEventListener('click', function (e) {
+              e.stopPropagation();
+              navigateToTerminal(node.terminalHandle);
+            });
+            actions.appendChild(btnTerm);
+          }
+
+          const allChildren = childrenMap.get(node.id) || [];
+          if (allChildren.length > 0) {
+            const isFolded = foldedNodeIds.has(node.id);
+            const btnFold = document.createElement('button');
+            btnFold.className = 'btn-fold';
+            btnFold.textContent = isFolded ? `▶ Expand (${allChildren.length})` : '▼ Collapse';
+            btnFold.setAttribute('aria-label', isFolded ? `Expand ${allChildren.length} children` : 'Collapse children');
+            btnFold.addEventListener('click', function (e) {
+              e.stopPropagation();
+              if (foldedNodeIds.has(node.id)) {
+                foldedNodeIds.delete(node.id);
+              } else {
+                foldedNodeIds.add(node.id);
+              }
+              persistState();
+              renderGraph();
+            });
+            actions.appendChild(btnFold);
+          }
+
+          card.appendChild(actions);
+
+          // Selection
+          card.addEventListener('click', function () {
+            selectedNodeId = node.id;
+            nodeContainer.querySelectorAll('.node-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            persistState();
+          });
+
+          // Keyboard Enter / Space opens terminal
+          card.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              if (node.terminalHandle) {
+                e.preventDefault();
+                navigateToTerminal(node.terminalHandle);
+              }
+            }
+          });
+
+          nodeContainer.appendChild(card);
+        });
+
+        updateCanvasTransform();
+      }
+
+      // Fetch Scoped Graph
+      async function fetchGraph(explicitRootRunId) {
+        if (!window.orca || !window.orca.host || !window.orca.host.call) {
+          incompatibleState.classList.add('active');
+          return;
+        }
+
+        try {
+          btnRefresh.disabled = true;
+          const params = explicitRootRunId ? { rootRunId: explicitRootRunId } : (selectedRootRunId ? { rootRunId: selectedRootRunId } : {});
+          const result = await window.orca.host.call('orchestration.getScopedGraph', params);
+
+          if (!result) {
+            showAlert('Received empty response from orchestration service.');
+            return;
+          }
+
+          graphData = result;
+
+          if (result.emptyReason === 'incompatible-host') {
+            incompatibleState.classList.add('active');
+            disabledState.classList.remove('active');
+            return;
+          }
+
+          if (result.emptyReason === 'disabled') {
+            disabledState.classList.add('active');
+            incompatibleState.classList.remove('active');
+            return;
+          }
+
+          incompatibleState.classList.remove('active');
+          disabledState.classList.remove('active');
+
+          // Populate Root Selector
+          rootSelect.innerHTML = '';
+          if (result.roots && result.roots.length > 0) {
+            result.roots.forEach(r => {
+              const opt = document.createElement('option');
+              opt.value = r.runId;
+              opt.textContent = `${r.objective || r.runId} (${r.status})`;
+              if (r.runId === result.selectedRootRunId) {
+                opt.selected = true;
+              }
+              rootSelect.appendChild(opt);
+            });
+            selectedRootRunId = result.selectedRootRunId || result.roots[0].runId;
+          } else {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'No active runs';
+            rootSelect.appendChild(opt);
+            selectedRootRunId = null;
+          }
+
+          persistState();
+          renderGraph();
+        } catch (err) {
+          showAlert(`Failed to fetch orchestration graph: ${err && err.message ? err.message : String(err)}`);
+        } finally {
+          btnRefresh.disabled = false;
+        }
+      }
+
+      // Root Selector change
+      rootSelect.addEventListener('change', function () {
+        selectedRootRunId = rootSelect.value;
+        persistState();
+        fetchGraph(selectedRootRunId);
+      });
+
+      btnRefresh.addEventListener('click', function () {
+        fetchGraph(selectedRootRunId);
+      });
+
+      // Keyboard navigation in viewport
+      viewport.addEventListener('keydown', function (e) {
+        const cards = Array.from(nodeContainer.querySelectorAll('.node-card'));
+        if (cards.length === 0) return;
+
+        const currentIndex = cards.findIndex(c => c.getAttribute('data-node-id') === selectedNodeId);
+
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const nextIndex = (currentIndex + 1) % cards.length;
+          cards[nextIndex].focus();
+          cards[nextIndex].click();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const prevIndex = (currentIndex - 1 + cards.length) % cards.length;
+          cards[prevIndex].focus();
+          cards[prevIndex].click();
+        } else if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          btnZoomIn.click();
+        } else if (e.key === '-' || e.key === '_') {
+          e.preventDefault();
+          btnZoomOut.click();
+        } else if (e.key === '0' || e.key === 'f' || e.key === 'F') {
+          e.preventDefault();
+          fitView();
+        }
+      });
+
+      // Init
+      loadPersistedState();
+      updateCanvasTransform();
+
+      // Check if window.orca is ready
+      if (window.orca && window.orca.host) {
+        fetchGraph(selectedRootRunId);
+      } else {
+        window.addEventListener('load', function () {
+          fetchGraph(selectedRootRunId);
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

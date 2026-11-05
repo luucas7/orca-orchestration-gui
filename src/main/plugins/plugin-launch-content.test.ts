@@ -78,8 +78,11 @@ describe('Phase 1 launch plugin content', () => {
       if (contributes.themes.length > 0) {
         contributionKinds.add('theme')
       }
+      if (contributes.panels.length > 0) {
+        contributionKinds.add('panel')
+      }
     }
-    expect(contributionKinds).toEqual(new Set(['vm-recipe', 'theme']))
+    expect(contributionKinds).toEqual(new Set(['vm-recipe', 'theme', 'panel']))
   })
 
   it('publishes every bundled pack only when its release hash matches exact bytes', async () => {

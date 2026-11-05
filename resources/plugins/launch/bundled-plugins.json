@@ -7,6 +7,11 @@
       "contentHash": "7e17af8557dd0163ee0bc74aca3a6eb227f00bdd4b2ca04a68d78d891a24afb3"
     },
     {
+      "pluginKey": "stablyai.orca-orchestration-view",
+      "path": "stablyai.orca-orchestration-view",
+      "contentHash": "cf4f85b6d4b6ba1e2b37cad7efd3b89917274232bcd4a96975b98d830ebff603"
+    },
+    {
       "pluginKey": "stablyai.orca-vscode-default-themes",
       "path": "stablyai.orca-vscode-default-themes",
       "contentHash": "ce11b29f4c21bedeaa3613e7ce9c4a6863f800e6945754ad1e36d04e24991139"

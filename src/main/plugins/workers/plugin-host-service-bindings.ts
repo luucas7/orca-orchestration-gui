@@ -14,6 +14,7 @@ import { PluginSecretsStore, pluginSecretsProtection } from '../plugin-secrets-s
 import { PluginKvStore } from '../plugin-storage-store'
 import type { TerminalInputKind } from '../../../shared/terminal-input-kind'
 import { pluginTerminalTitle, type PluginAgentStatusRow } from './plugin-workspace-projection'
+import type { OrchestrationDb } from '../../runtime/orchestration/db'
 
 export type PluginRuntimeDelegate = {
   resolveActiveWorktreeContext(): Promise<{
@@ -49,6 +50,8 @@ export type PluginRuntimeDelegate = {
   listAgentStatuses?(): readonly PluginAgentStatusRow[]
   /** The runtime RPC the `orca` CLI calls, in process; absent where none is bound. */
   callRuntime?: PluginRuntimeRpc
+  /** Orchestration database access; absent where orchestration is unavailable. */
+  getOrchestrationDb?(): OrchestrationDb | null
 }
 
 export function bindPluginHostServices(input: {
@@ -74,6 +77,9 @@ export function bindPluginHostServices(input: {
       : null,
     runtimeRpc: delegate.callRuntime ?? null,
     renderer: input.renderer ?? null,
+    orchestration: delegate.getOrchestrationDb
+      ? { getOrchestrationDb: () => delegate.getOrchestrationDb!() }
+      : null,
     resolveActiveWorktreeContext: async () => {
       const context = await delegate.resolveActiveWorktreeContext()
       if (!context) {

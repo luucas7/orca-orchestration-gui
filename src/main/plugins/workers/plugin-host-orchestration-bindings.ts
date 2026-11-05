@@ -1,0 +1,56 @@
+import { PLUGIN_HOST_API } from '../../../shared/plugins/workers/plugin-host-api'
+import { bind, type BoundPluginHostMethod } from './plugin-host-method-bind'
+import { PluginHostCallError } from './plugin-host-call-scope'
+import { projectScopedOrchestrationGraph } from './orchestration-graph-projection'
+
+const api = PLUGIN_HOST_API
+
+export const PLUGIN_ORCHESTRATION_HANDLERS: {
+  'orchestration.getScopedGraph': BoundPluginHostMethod
+  'orchestration.navigateTerminal': BoundPluginHostMethod
+} = {
+  'orchestration.getScopedGraph': bind(
+    api['orchestration.getScopedGraph'],
+    async (params, { services }) => {
+      const db = services.orchestration?.getOrchestrationDb() ?? null
+      const context = await services.resolveActiveWorktreeContext()
+      const terminals = context ? await services.listWorktreeTerminals(context.worktreeId) : []
+      const agentStatuses = services.listAgentStatuses()
+
+      return projectScopedOrchestrationGraph({
+        db,
+        params,
+        terminals,
+        agentStatuses
+      })
+    }
+  ),
+  'orchestration.navigateTerminal': bind(
+    api['orchestration.navigateTerminal'],
+    async (params, { services, scope }) => {
+      scope.assertActive()
+      if (!services.runtimeRpc) {
+        throw new PluginHostCallError('unavailable', 'this Orca host cannot navigate terminals')
+      }
+      type TerminalFocusAnswer = {
+        focus?: {
+          handle?: string
+          tabId?: string | null
+          worktreeId?: string | null
+          navigated?: boolean
+        }
+      }
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: runtimeRpc terminal.focus returns focus envelope or undefined
+      const answer = (await services.runtimeRpc('terminal.focus', {
+        terminal: params.terminalHandle,
+        navigation: 'host'
+      })) as TerminalFocusAnswer | undefined
+
+      return {
+        navigated: Boolean(answer?.focus?.navigated),
+        tabId: answer?.focus?.tabId ?? null,
+        worktreeId: answer?.focus?.worktreeId ?? null
+      }
+    }
+  )
+}

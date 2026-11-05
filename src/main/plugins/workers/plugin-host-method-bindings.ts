@@ -27,6 +27,8 @@ import {
   PLUGIN_WORKSPACE_ACTION_HANDLERS,
   type PluginRuntimeRpc
 } from './plugin-host-workspace-method-bindings'
+import { PLUGIN_ORCHESTRATION_HANDLERS } from './plugin-host-orchestration-bindings'
+import type { OrchestrationDb } from '../../runtime/orchestration/db'
 
 export type { PluginHostCallScope } from './plugin-host-call-scope'
 
@@ -34,6 +36,10 @@ export type PluginWorktreeContext = {
   worktreeId: string
   branch: string
   displayName: string
+}
+
+export type PluginOrchestrationServices = {
+  getOrchestrationDb(): OrchestrationDb | null
 }
 
 /** Desktop-only sinks for frame methods; absent in headless serve. */
@@ -92,6 +98,7 @@ export type PluginHostServices = {
   runtimeRpc?: PluginRuntimeRpc | null
   /** Orca's window, for actions only it can take; absent in headless serve. */
   renderer?: PluginHostRendererActions | null
+  orchestration?: PluginOrchestrationServices | null
   settings: {
     getAll(pluginId: string): Record<string, PluginJsonValue>
     set(
@@ -208,7 +215,8 @@ const HANDLERS: Record<PluginHostMethodName, BoundPluginHostMethod> = {
   }),
   ...PLUGIN_PANEL_BRIDGE_HANDLERS,
   ...PLUGIN_STATUS_BAR_HANDLERS,
-  ...PLUGIN_WORKSPACE_ACTION_HANDLERS
+  ...PLUGIN_WORKSPACE_ACTION_HANDLERS,
+  ...PLUGIN_ORCHESTRATION_HANDLERS
 }
 
 function requireDesktop(services: PluginHostServices): PluginDesktopFrameServices {
