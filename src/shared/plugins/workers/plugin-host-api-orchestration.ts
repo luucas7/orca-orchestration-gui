@@ -4,6 +4,50 @@ import { ALL_SURFACES, FRAMES_ONLY, spec } from './plugin-host-method-spec'
 export const ORCHESTRATION_NODE_ROLES = ['root-orchestrator', 'orchestrator', 'worker'] as const
 export type OrchestrationNodeRole = (typeof ORCHESTRATION_NODE_ROLES)[number]
 
+export const ORCHESTRATION_ATTENTION_CATEGORIES = [
+  'confirmed-failure',
+  'expected-intervention',
+  'uncertain'
+] as const
+export type OrchestrationAttentionCategory = (typeof ORCHESTRATION_ATTENTION_CATEGORIES)[number]
+
+export const ORCHESTRATION_ATTENTION_CAUSES = [
+  'native-failure',
+  'input-required',
+  'quota-exceeded',
+  'context-window-exhausted',
+  'budget-exceeded',
+  'source-disconnect',
+  'stale-telemetry',
+  'unconfirmed-heuristic',
+  'unknown'
+] as const
+export type OrchestrationAttentionCause = (typeof ORCHESTRATION_ATTENTION_CAUSES)[number]
+
+export const orchestrationAttentionItemSchema = z
+  .object({
+    id: z.string().min(1).max(512),
+    nodeId: z.string().min(1).max(512),
+    category: z.enum(ORCHESTRATION_ATTENTION_CATEGORIES),
+    reason: z.string().max(512),
+    cause: z.enum(ORCHESTRATION_ATTENTION_CAUSES),
+    isHeuristic: z.boolean(),
+    source: z.string().max(128),
+    timestamp: z.string().max(128).optional()
+  })
+  .strict()
+export type OrchestrationAttentionItem = z.infer<typeof orchestrationAttentionItemSchema>
+
+export const orchestrationSourceFreshnessSchema = z
+  .object({
+    status: z.enum(['live', 'stale', 'disconnected']),
+    lastUpdatedAt: z.string().max(128),
+    provenance: z.string().max(256),
+    isVerified: z.boolean()
+  })
+  .strict()
+export type OrchestrationSourceFreshness = z.infer<typeof orchestrationSourceFreshnessSchema>
+
 export const ORCHESTRATION_EMPTY_REASONS = [
   'no-runs',
   'run-not-found',
@@ -38,7 +82,8 @@ export const orchestrationNodeSchema = z
     terminalHandle: z.string().max(1024).nullable(),
     orcaSessionId: z.string().max(256).nullable(),
     parentId: z.string().max(512).nullable(),
-    depth: z.number().int().nonnegative()
+    depth: z.number().int().nonnegative(),
+    attention: orchestrationAttentionItemSchema.nullable().optional()
   })
   .strict()
 export type OrchestrationNode = z.infer<typeof orchestrationNodeSchema>
@@ -58,7 +103,10 @@ export const scopedOrchestrationGraphSchema = z
     roots: z.array(orchestrationRootSummarySchema).max(100),
     nodes: z.array(orchestrationNodeSchema).max(500),
     edges: z.array(orchestrationEdgeSchema).max(1000),
-    emptyReason: z.enum(ORCHESTRATION_EMPTY_REASONS).nullable()
+    emptyReason: z.enum(ORCHESTRATION_EMPTY_REASONS).nullable(),
+    attentionItems: z.array(orchestrationAttentionItemSchema).max(500).default([]),
+    attentionCount: z.number().int().nonnegative().default(0),
+    sourceFreshness: orchestrationSourceFreshnessSchema.optional()
   })
   .strict()
 export type ScopedOrchestrationGraph = z.infer<typeof scopedOrchestrationGraphSchema>
@@ -66,7 +114,8 @@ export type ScopedOrchestrationGraph = z.infer<typeof scopedOrchestrationGraphSc
 export const orchestrationGetScopedGraphParams = z
   .strictObject({
     rootRunId: z.string().min(1).max(512).optional(),
-    rootHandle: z.string().min(1).max(1024).optional()
+    rootHandle: z.string().min(1).max(1024).optional(),
+    staleSource: z.boolean().optional()
   })
   .optional()
 

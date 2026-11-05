@@ -146,6 +146,255 @@
       color: var(--fg);
     }
 
+    /* Attention Toggle & Badge */
+    .badge-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      background: var(--orca-destructive, #ef4444);
+      color: #ffffff;
+      border-radius: 9999px;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      margin-left: 4px;
+    }
+
+    /* Stale Banner */
+    #stale-banner {
+      display: none;
+      padding: 6px 12px;
+      background: color-mix(in srgb, #f59e0b 15%, var(--bg));
+      color: var(--fg);
+      border-bottom: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
+      font-size: 12px;
+      align-items: center;
+      gap: 8px;
+      z-index: 20;
+    }
+
+    .stale-indicator {
+      color: #f59e0b;
+      font-size: 10px;
+    }
+
+    .stale-disabled {
+      opacity: 0.5 !important;
+      cursor: not-allowed !important;
+    }
+
+    /* Attention Panel Drawer */
+    #attention-panel {
+      position: absolute;
+      top: 36px;
+      right: 10px;
+      width: 320px;
+      max-height: calc(100vh - 60px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      z-index: 30;
+      overflow: hidden;
+    }
+
+    .attention-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .attention-title {
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--fg);
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      color: var(--muted-fg);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 4px;
+      line-height: 1;
+      border-radius: var(--radius);
+    }
+
+    .btn-icon:hover {
+      color: var(--fg);
+      background: var(--card);
+    }
+
+    .attention-items-container {
+      padding: 8px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .attention-empty {
+      font-size: 12px;
+      color: var(--muted-fg);
+      text-align: center;
+      padding: 16px 8px;
+    }
+
+    .attention-item-card {
+      padding: 8px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: border-color 0.1s ease, background 0.1s ease;
+    }
+
+    .attention-item-card:hover,
+    .attention-item-card:focus-visible {
+      outline: none;
+      border-color: var(--ring);
+      background: var(--card);
+    }
+
+    .attention-item-card.confirmed-failure {
+      border-left: 3px solid #ef4444;
+    }
+
+    .attention-item-card.expected-intervention {
+      border-left: 3px solid #f59e0b;
+    }
+
+    .attention-item-card.uncertain {
+      border-left: 3px solid #8b5cf6;
+      border-style: dashed;
+    }
+
+    .attention-item-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .attention-category-badge {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 1px 4px;
+      border-radius: 3px;
+      letter-spacing: 0.03em;
+    }
+
+    .attention-category-badge.confirmed-failure {
+      background: color-mix(in srgb, #ef4444 20%, transparent);
+      color: #ef4444;
+    }
+
+    .attention-category-badge.expected-intervention {
+      background: color-mix(in srgb, #f59e0b 20%, transparent);
+      color: #f59e0b;
+    }
+
+    .attention-category-badge.uncertain {
+      background: color-mix(in srgb, #8b5cf6 20%, transparent);
+      color: #8b5cf6;
+    }
+
+    .attention-cause-badge {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      background: var(--muted);
+      color: var(--muted-fg);
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    .heuristic-tag {
+      font-size: 8px;
+      font-weight: 700;
+      background: color-mix(in srgb, #8b5cf6 20%, var(--card));
+      color: #8b5cf6;
+      border: 1px dashed #8b5cf6;
+      padding: 0 3px;
+      border-radius: 2px;
+    }
+
+    .attention-target-name {
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--fg);
+    }
+
+    .attention-item-reason {
+      font-size: 11px;
+      color: var(--muted-fg);
+    }
+
+    .attention-item-source {
+      font-size: 9px;
+      color: var(--muted-fg);
+      font-family: var(--font-mono);
+    }
+
+    /* Node Card Attention Highlights */
+    .node-card.has-attention.attention-confirmed-failure {
+      border-color: #ef4444;
+      box-shadow: 0 0 0 1px #ef4444;
+    }
+
+    .node-card.has-attention.attention-expected-intervention {
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 1px #f59e0b;
+    }
+
+    .node-card.has-attention.attention-uncertain {
+      border-color: #8b5cf6;
+      border-style: dashed;
+    }
+
+    .node-attention-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      padding: 2px 4px;
+      border-radius: var(--radius);
+      margin-top: 2px;
+    }
+
+    .node-attention-row.confirmed-failure {
+      background: color-mix(in srgb, #ef4444 15%, var(--card));
+      color: #ef4444;
+    }
+
+    .node-attention-row.expected-intervention {
+      background: color-mix(in srgb, #f59e0b 15%, var(--card));
+      color: #f59e0b;
+    }
+
+    .node-attention-row.uncertain {
+      background: color-mix(in srgb, #8b5cf6 15%, var(--card));
+      color: #8b5cf6;
+    }
+
+    .node-attention-reason {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     /* Viewport & Canvas */
     #viewport {
       position: relative;
@@ -452,7 +701,26 @@
     <button id="btn-zoom-in" class="btn-toolbar" title="Zoom in" aria-label="Zoom in">+</button>
     <button id="btn-zoom-out" class="btn-toolbar" title="Zoom out" aria-label="Zoom out">−</button>
     <button id="btn-fit-view" class="btn-toolbar" title="Fit to view" aria-label="Fit view">Fit</button>
+    <button id="btn-attention" class="btn-toolbar" title="Toggle attention list" aria-label="Toggle attention list">
+      <span>Attention</span>
+      <span id="attention-count-badge" class="badge-count" style="display: none;">0</span>
+    </button>
   </header>
+
+  <!-- Stale / Disconnected Banner -->
+  <aside id="stale-banner" class="stale-banner" role="status" aria-live="polite" style="display: none;">
+    <span class="stale-indicator">●</span>
+    <span id="stale-message">Source connection lost. Telemetry unverified. Preserving last known snapshot. Actions requiring live verification are disabled.</span>
+  </aside>
+
+  <!-- Persistent Attention Drawer / Panel -->
+  <section id="attention-panel" class="attention-drawer" aria-label="Attention Required" style="display: none;">
+    <div class="attention-header">
+      <span class="attention-title">Attention Required (<span id="attention-total-count">0</span>)</span>
+      <button id="btn-close-attention" class="btn-icon" aria-label="Close attention panel">✕</button>
+    </div>
+    <div id="attention-items-list" class="attention-items-container" role="list"></div>
+  </section>
 
   <!-- Alert Banner -->
   <aside id="alert-banner" role="alert">
@@ -499,6 +767,8 @@
       let isDragging = false;
       let dragStart = { x: 0, y: 0 };
       let dragOrigin = { x: 0, y: 0 };
+      let nodePositions = new Map();
+      let isAttentionPanelOpen = false;
 
       // DOM Elements
       const rootSelect = document.getElementById('root-select');
@@ -506,6 +776,13 @@
       const btnZoomIn = document.getElementById('btn-zoom-in');
       const btnZoomOut = document.getElementById('btn-zoom-out');
       const btnFitView = document.getElementById('btn-fit-view');
+      const btnAttention = document.getElementById('btn-attention');
+      const attentionCountBadge = document.getElementById('attention-count-badge');
+      const attentionPanel = document.getElementById('attention-panel');
+      const attentionTotalCount = document.getElementById('attention-total-count');
+      const btnCloseAttention = document.getElementById('btn-close-attention');
+      const attentionItemsList = document.getElementById('attention-items-list');
+      const staleBanner = document.getElementById('stale-banner');
       const alertBanner = document.getElementById('alert-banner');
       const alertMessage = document.getElementById('alert-message');
       const alertDismiss = document.getElementById('alert-dismiss');
@@ -518,6 +795,16 @@
       const incompatibleState = document.getElementById('incompatible-state');
       const disabledState = document.getElementById('disabled-state');
 
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
       // Storage
       function loadPersistedState() {
         try {
@@ -527,6 +814,12 @@
             if (parsed.selectedRootRunId) selectedRootRunId = parsed.selectedRootRunId;
             if (Array.isArray(parsed.foldedNodeIds)) foldedNodeIds = new Set(parsed.foldedNodeIds);
             if (parsed.selectedNodeId) selectedNodeId = parsed.selectedNodeId;
+            if (typeof parsed.isAttentionPanelOpen === 'boolean') {
+              isAttentionPanelOpen = parsed.isAttentionPanelOpen;
+              if (attentionPanel) {
+                attentionPanel.style.display = isAttentionPanelOpen ? 'flex' : 'none';
+              }
+            }
             if (parsed.camera && typeof parsed.camera.x === 'number') {
               camera = {
                 x: parsed.camera.x,
@@ -544,6 +837,7 @@
             selectedRootRunId,
             foldedNodeIds: Array.from(foldedNodeIds),
             selectedNodeId,
+            isAttentionPanelOpen,
             camera
           };
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -576,6 +870,140 @@
         camera.zoom = clamped;
         updateCanvasTransform();
         persistState();
+      }
+
+      function centerOnNode(nodeId) {
+        const pos = nodePositions.get(nodeId);
+        if (!pos) return;
+        selectedNodeId = nodeId;
+
+        const vpWidth = viewport.clientWidth || 800;
+        const vpHeight = viewport.clientHeight || 600;
+        camera.x = vpWidth / 2 - (pos.x + 125) * camera.zoom;
+        camera.y = vpHeight / 2 - (pos.y + 40) * camera.zoom;
+
+        updateCanvasTransform();
+        persistState();
+
+        const card = document.getElementById('node-' + nodeId);
+        if (card) {
+          card.focus();
+          nodeContainer.querySelectorAll('.node-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+        }
+      }
+
+      function updateAttentionUI() {
+        const items = (graphData && graphData.attentionItems) ? graphData.attentionItems : [];
+        const count = (graphData && typeof graphData.attentionCount === 'number') ? graphData.attentionCount : items.length;
+
+        if (attentionCountBadge) {
+          if (count > 0) {
+            attentionCountBadge.textContent = String(count);
+            attentionCountBadge.style.display = 'inline-flex';
+          } else {
+            attentionCountBadge.textContent = '0';
+            attentionCountBadge.style.display = 'none';
+          }
+        }
+
+        if (attentionTotalCount) {
+          attentionTotalCount.textContent = String(count);
+        }
+
+        if (!attentionItemsList) return;
+        attentionItemsList.innerHTML = '';
+
+        if (items.length === 0) {
+          const emptyMsg = document.createElement('div');
+          emptyMsg.className = 'attention-empty';
+          emptyMsg.textContent = 'No agents currently require attention.';
+          attentionItemsList.appendChild(emptyMsg);
+          return;
+        }
+
+        items.forEach(item => {
+          const el = document.createElement('div');
+          el.className = 'attention-item-card ' + item.category;
+          el.setAttribute('tabindex', '0');
+          el.setAttribute('role', 'listitem');
+          el.setAttribute('data-node-id', item.nodeId);
+
+          const targetNode = graphData.nodes ? graphData.nodes.find(n => n.id === item.nodeId) : null;
+          const targetName = targetNode ? targetNode.name : item.nodeId;
+          const targetCli = targetNode ? targetNode.cli : '';
+
+          let categoryLabel = 'Confirmed Failure';
+          if (item.category === 'expected-intervention') categoryLabel = 'Expected Intervention';
+          if (item.category === 'uncertain') categoryLabel = item.isHeuristic ? 'Heuristic (Uncertain)' : 'Uncertain';
+
+          el.innerHTML = `
+            <div class="attention-item-header">
+              <span class="attention-category-badge ${item.category}">${categoryLabel}</span>
+              ${item.cause ? `<span class="attention-cause-badge">${escapeHtml(item.cause)}</span>` : ''}
+              ${item.isHeuristic ? `<span class="heuristic-tag">HEURISTIC</span>` : ''}
+            </div>
+            <div class="attention-item-body">
+              <div class="attention-target-name">${escapeHtml(targetName)} ${targetCli ? `<span class="badge badge-cli">${escapeHtml(targetCli)}</span>` : ''}</div>
+              <div class="attention-item-reason">${escapeHtml(item.reason)}</div>
+              <div class="attention-item-source">Source: ${escapeHtml(item.source)}</div>
+            </div>
+          `;
+
+          function triggerFocus() {
+            centerOnNode(item.nodeId);
+          }
+          el.addEventListener('click', triggerFocus);
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              triggerFocus();
+            }
+          });
+
+          attentionItemsList.appendChild(el);
+        });
+      }
+
+      function updateSourceFreshnessUI() {
+        if (!staleBanner) return;
+        const freshness = graphData && graphData.sourceFreshness;
+        const isStale = freshness && (freshness.status === 'stale' || freshness.status === 'disconnected');
+        if (isStale) {
+          staleBanner.style.display = 'flex';
+          document.querySelectorAll('.btn-terminal').forEach(btn => {
+            btn.setAttribute('disabled', 'true');
+            btn.classList.add('stale-disabled');
+            btn.setAttribute('title', 'Navigation unavailable while source is disconnected');
+          });
+        } else {
+          staleBanner.style.display = 'none';
+          document.querySelectorAll('.btn-terminal').forEach(btn => {
+            btn.removeAttribute('disabled');
+            btn.classList.remove('stale-disabled');
+            btn.setAttribute('title', 'Open Terminal');
+          });
+        }
+      }
+
+      if (btnAttention) {
+        btnAttention.addEventListener('click', function () {
+          isAttentionPanelOpen = !isAttentionPanelOpen;
+          if (attentionPanel) {
+            attentionPanel.style.display = isAttentionPanelOpen ? 'flex' : 'none';
+          }
+          persistState();
+        });
+      }
+
+      if (btnCloseAttention) {
+        btnCloseAttention.addEventListener('click', function () {
+          isAttentionPanelOpen = false;
+          if (attentionPanel) {
+            attentionPanel.style.display = 'none';
+          }
+          persistState();
+        });
       }
 
       // Pan & Zoom Events
@@ -756,7 +1184,7 @@
 
         // Simple Tidy Layered Tree Layout
         // Nodes spaced by level (Y: 170px per depth) and X by leaf indexing
-        const nodePositions = new Map();
+        nodePositions = new Map();
         const CARD_WIDTH = 250;
         const HORIZONTAL_GAP = 30;
         const VERTICAL_GAP = 180;
@@ -815,6 +1243,9 @@
 
           const card = document.createElement('div');
           card.className = 'node-card' + (node.id === selectedNodeId ? ' selected' : '');
+          if (node.attention) {
+            card.classList.add('has-attention', 'attention-' + node.attention.category);
+          }
           card.id = `node-${node.id}`;
           card.tabIndex = 0;
           card.role = 'treeitem';
@@ -869,6 +1300,19 @@
             card.appendChild(task);
           }
 
+          if (node.attention) {
+            const attRow = document.createElement('div');
+            attRow.className = `node-attention-row ${node.attention.category}`;
+            let catLabel = 'Failure';
+            if (node.attention.category === 'expected-intervention') catLabel = 'Intervention';
+            if (node.attention.category === 'uncertain') catLabel = node.attention.isHeuristic ? 'Heuristic' : 'Uncertain';
+            attRow.innerHTML = `
+              <span class="attention-category-badge ${node.attention.category}">${catLabel}</span>
+              <span class="node-attention-reason" title="${escapeHtml(node.attention.reason)}">${escapeHtml(node.attention.reason)}</span>
+            `;
+            card.appendChild(attRow);
+          }
+
           // Identities (Task, Dispatch, Terminal, Session)
           const identities = document.createElement('div');
           identities.className = 'node-identities';
@@ -912,8 +1356,18 @@
             btnTerm.className = 'btn-terminal';
             btnTerm.textContent = 'Open Terminal';
             btnTerm.setAttribute('data-terminal', node.terminalHandle);
+
+            const freshness = graphData && graphData.sourceFreshness;
+            const isStale = freshness && (freshness.status === 'stale' || freshness.status === 'disconnected');
+            if (isStale) {
+              btnTerm.setAttribute('disabled', 'true');
+              btnTerm.classList.add('stale-disabled');
+              btnTerm.setAttribute('title', 'Navigation unavailable while source is disconnected');
+            }
+
             btnTerm.addEventListener('click', function (e) {
               e.stopPropagation();
+              if (btnTerm.hasAttribute('disabled')) return;
               navigateToTerminal(node.terminalHandle);
             });
             actions.appendChild(btnTerm);
@@ -952,6 +1406,9 @@
           // Keyboard Enter / Space opens terminal
           card.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' || e.key === ' ') {
+              const freshness = graphData && graphData.sourceFreshness;
+              const isStale = freshness && (freshness.status === 'stale' || freshness.status === 'disconnected');
+              if (isStale) return;
               if (node.terminalHandle) {
                 e.preventDefault();
                 navigateToTerminal(node.terminalHandle);
@@ -1020,6 +1477,8 @@
             selectedRootRunId = null;
           }
 
+          updateAttentionUI();
+          updateSourceFreshnessUI();
           persistState();
           renderGraph();
         } catch (err) {
@@ -1072,6 +1531,8 @@
       // Init
       loadPersistedState();
       updateCanvasTransform();
+      updateAttentionUI();
+      updateSourceFreshnessUI();
 
       // Check if window.orca is ready
       if (window.orca && window.orca.host) {

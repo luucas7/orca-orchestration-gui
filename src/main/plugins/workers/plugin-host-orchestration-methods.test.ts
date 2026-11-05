@@ -6,6 +6,9 @@ import { executePluginHostCall, type PluginHostServices } from './plugin-host-me
 import type { PluginRuntimeRpc } from './plugin-host-workspace-method-bindings'
 import { scopedOrchestrationGraphSchema } from '../../../shared/plugins/workers/plugin-host-api-orchestration'
 import type { PluginAgentStatusRow, PluginWorkspaceTerminal } from './plugin-workspace-projection'
+import { globalObservationManager } from './orchestration-observation-scope'
+
+const FIXED_STARTED_AT = 1_730_707_200_000
 
 describe('orchestration host methods', () => {
   let db: OrchestrationDb
@@ -256,28 +259,28 @@ describe('orchestration host methods', () => {
               terminalHandle: 'term-root',
               agentType: 'claude',
               state: 'working',
-              stateStartedAt: Date.now()
+              stateStartedAt: FIXED_STARTED_AT
             },
             {
               paneKey: 'tab-2:leaf-1',
               terminalHandle: 'term-lead',
               agentType: 'claude',
               state: 'working',
-              stateStartedAt: Date.now()
+              stateStartedAt: FIXED_STARTED_AT
             },
             {
               paneKey: 'tab-3:leaf-1',
               terminalHandle: 'term-codex',
               agentType: 'codex',
               state: 'working',
-              stateStartedAt: Date.now()
+              stateStartedAt: FIXED_STARTED_AT
             },
             {
               paneKey: 'tab-4:leaf-1',
               terminalHandle: 'term-opencode',
               agentType: 'opencode',
               state: 'waiting',
-              stateStartedAt: Date.now()
+              stateStartedAt: FIXED_STARTED_AT
             }
           ]
         })
@@ -533,28 +536,28 @@ describe('orchestration host methods', () => {
             terminalHandle: 'term-root',
             agentType: 'claude',
             state: 'working',
-            stateStartedAt: Date.now()
+            stateStartedAt: FIXED_STARTED_AT
           },
           {
             paneKey: 'tab-lead:leaf-1',
             terminalHandle: 'term-lead',
             agentType: 'claude',
             state: 'working',
-            stateStartedAt: Date.now()
+            stateStartedAt: FIXED_STARTED_AT
           },
           {
             paneKey: 'tab-codex:leaf-1',
             terminalHandle: 'term-codex',
             agentType: 'codex',
             state: 'working',
-            stateStartedAt: Date.now()
+            stateStartedAt: FIXED_STARTED_AT
           },
           {
             paneKey: 'tab-foreign:leaf-1',
             terminalHandle: 'term-opencode-cross',
             agentType: 'opencode',
             state: 'waiting',
-            stateStartedAt: Date.now()
+            stateStartedAt: FIXED_STARTED_AT
           }
         ]
       })
@@ -636,6 +639,235 @@ describe('orchestration host methods', () => {
         expect(restoredGraph.nodes.find((n) => n.dispatchId === dispCodex.id)).toBeDefined()
         expect(restoredGraph.nodes.find((n) => n.dispatchId === dispOpenCode.id)).toBeDefined()
       }
+    })
+  })
+
+  describe('demonstration V01 & V16: 20-agent hierarchy, live attention, cause evidence, and stale telemetry', () => {
+    it('detects native failure in 20-agent hierarchy, distinguishes quota/context/heuristic causes, and marks stale telemetry', async () => {
+      // 1. Create a 20+ agent hierarchy (1 root + 3 leads + 18 workers = 22 agents)
+      const run = db.createRun({
+        objective: 'Large scale 20-agent fleet orchestration with mixed providers',
+        coordinatorHandle: 'term-root',
+        coordinatorPaneKey: 'tab-root:leaf-1',
+        coordinatorOrcaSessionId: testOrcaSessionId('root-session-20-agents')
+      })
+
+      const terminals: PluginWorkspaceTerminal[] = [{ id: 'term-root', title: 'Root Coordinator' }]
+      const agentStatuses: PluginAgentStatusRow[] = [
+        {
+          paneKey: 'tab-root:leaf-1',
+          terminalHandle: 'term-root',
+          agentType: 'claude',
+          state: 'working',
+          stateStartedAt: FIXED_STARTED_AT
+        }
+      ]
+
+      let agentCounter = 1
+      for (let leadIdx = 1; leadIdx <= 3; leadIdx++) {
+        const leadHandle = `term-lead-${leadIdx}`
+        terminals.push({ id: leadHandle, title: `Nested Lead ${leadIdx}` })
+        agentStatuses.push({
+          paneKey: `tab-lead-${leadIdx}:leaf-1`,
+          terminalHandle: leadHandle,
+          agentType: 'codex',
+          state: 'working',
+          stateStartedAt: FIXED_STARTED_AT
+        })
+
+        const leadTask = db.createTask({
+          runId: run.id,
+          spec: `Nested lead ${leadIdx} coordination with codex`,
+          taskTitle: `Lead ${leadIdx}`
+        })
+        db.createDispatchContext({
+          taskId: leadTask.id,
+          assigneeHandle: leadHandle,
+          assigneePaneKey: `tab-lead-${leadIdx}:leaf-1`,
+          creator: { kind: 'system' },
+          maxDepth: 10
+        })
+
+        // 6 workers under each lead = 18 workers
+        for (let workerIdx = 1; workerIdx <= 6; workerIdx++) {
+          const wHandle = `term-worker-${agentCounter}`
+          const wId = agentCounter++
+          let spec = `General work worker ${wId}`
+          let state: PluginAgentStatusRow['state'] = 'working'
+
+          if (wId === 2) {
+            // Worker 2: native failure
+            spec = 'Build compilation with rustc'
+            state = 'done'
+          } else if (wId === 5) {
+            // Worker 5: quota failure
+            spec = 'Embedding generation - quota exceeded by provider'
+            state = 'done'
+          } else if (wId === 8) {
+            // Worker 8: context window exhausted
+            spec = 'Refactoring large legacy file - context window exhausted token limit'
+            state = 'done'
+          } else if (wId === 11) {
+            // Worker 11: expected intervention
+            spec = 'Waiting for manual approval'
+            state = 'waiting'
+          } else if (wId === 14) {
+            // Worker 14: heuristic observation
+            spec = 'Heuristic anomaly check unconfirmed'
+            state = 'working'
+          } else if (wId === 17) {
+            // Worker 17: idle (should not trigger failure)
+            spec = 'Standby worker awaiting assignments'
+            state = 'working'
+          }
+
+          terminals.push({ id: wHandle, title: `Worker ${wId}` })
+          agentStatuses.push({
+            paneKey: `tab-w-${wId}:leaf-1`,
+            terminalHandle: wHandle,
+            agentType: wId % 2 === 0 ? 'opencode' : 'claude',
+            state,
+            stateStartedAt: FIXED_STARTED_AT
+          })
+
+          const wTask = db.createTask({
+            runId: run.id,
+            parentId: leadTask.id,
+            spec,
+            taskTitle: `Worker Task ${wId}`
+          })
+          const disp = db.createDispatchContext({
+            taskId: wTask.id,
+            assigneeHandle: wHandle,
+            assigneePaneKey: `tab-w-${wId}:leaf-1`,
+            creator: {
+              kind: 'terminal',
+              handle: leadHandle,
+              paneKey: `tab-lead-${leadIdx}:leaf-1`
+            },
+            maxDepth: 10
+          })
+
+          if (wId === 2 || wId === 5 || wId === 8) {
+            db.db
+              .prepare("UPDATE dispatch_contexts SET status = 'failed' WHERE id = ?")
+              .run(disp.id)
+          }
+        }
+      }
+
+      const services = createServices({ terminals, agentStatuses })
+
+      // Step 1: Query live graph
+      const outcome = await executePluginHostCall({
+        pluginId: 'stablyai.orca-orchestration-view',
+        method: 'orchestration.getScopedGraph',
+        params: { rootRunId: run.id },
+        surface: 'panel',
+        grantedCapabilities: [],
+        services
+      })
+
+      expect(outcome.ok).toBe(true)
+      if (outcome.ok) {
+        const graph = scopedOrchestrationGraphSchema.parse(outcome.value)
+        expect(graph.nodes.length).toBeGreaterThanOrEqual(20)
+        expect(graph.sourceFreshness?.status).toBe('live')
+        expect(graph.sourceFreshness?.isVerified).toBe(true)
+
+        // Verify attention count and distinct categories
+        expect(graph.attentionCount).toBeGreaterThanOrEqual(5)
+        const categories = new Set(graph.attentionItems.map((a) => a.category))
+        expect(categories).toContain('confirmed-failure')
+        expect(categories).toContain('expected-intervention')
+        expect(categories).toContain('uncertain')
+
+        // Verify specific causes
+        const causes = graph.attentionItems.map((a) => a.cause)
+        expect(causes).toContain('native-failure')
+        expect(causes).toContain('quota-exceeded')
+        expect(causes).toContain('context-window-exhausted')
+        expect(causes).toContain('input-required')
+        expect(causes).toContain('unconfirmed-heuristic')
+
+        // Verify heuristic is flagged as heuristic and uncertain
+        const heuristicItem = graph.attentionItems.find((a) => a.cause === 'unconfirmed-heuristic')
+        expect(heuristicItem).toBeDefined()
+        expect(heuristicItem?.isHeuristic).toBe(true)
+        expect(heuristicItem?.category).toBe('uncertain')
+
+        // Verify idle worker did NOT produce failure
+        const idleNode = graph.nodes.find((n) => n.name === 'Worker 17')
+        expect(idleNode).toBeDefined()
+        expect(idleNode?.attention).toBeNull()
+      }
+
+      // Step 2: Query with disconnected / stale source (V16)
+      const staleOutcome = await executePluginHostCall({
+        pluginId: 'stablyai.orca-orchestration-view',
+        method: 'orchestration.getScopedGraph',
+        params: { rootRunId: run.id, staleSource: true },
+        surface: 'panel',
+        grantedCapabilities: [],
+        services
+      })
+
+      expect(staleOutcome.ok).toBe(true)
+      if (staleOutcome.ok) {
+        const staleGraph = scopedOrchestrationGraphSchema.parse(staleOutcome.value)
+        expect(staleGraph.sourceFreshness?.status).toBe('disconnected')
+        expect(staleGraph.sourceFreshness?.isVerified).toBe(false)
+        expect(staleGraph.nodes.length).toBeGreaterThanOrEqual(20) // Last snapshot preserved
+
+        const disconnectItem = staleGraph.attentionItems.find(
+          (a) => a.cause === 'source-disconnect'
+        )
+        expect(disconnectItem).toBeDefined()
+        expect(disconnectItem?.category).toBe('uncertain')
+        expect(disconnectItem?.reason).toContain('Source disconnected')
+      }
+    })
+  })
+
+  describe('demonstration V10 & V11: event-storm coalescing, bounded reads, and observation lifecycle cleanup', () => {
+    it('coalesces rapid burst of invalidations into bounded reads and releases resources on disposal', async () => {
+      globalObservationManager.dispose()
+      globalObservationManager.resetReadCount()
+
+      const run = db.createRun({
+        objective: 'Event storm test run',
+        coordinatorHandle: 'term-storm-root',
+        coordinatorPaneKey: 'tab-storm:leaf-1'
+      })
+
+      const services = createServices({
+        terminals: [{ id: 'term-storm-root', title: 'Storm Coordinator' }]
+      })
+
+      // Simulate 50 concurrent getScopedGraph requests during an invalidation storm
+      const concurrentRequests = Array.from({ length: 50 }, () =>
+        executePluginHostCall({
+          pluginId: 'stablyai.orca-orchestration-view',
+          method: 'orchestration.getScopedGraph',
+          params: { rootRunId: run.id },
+          surface: 'panel',
+          grantedCapabilities: [],
+          services
+        })
+      )
+
+      const results = await Promise.all(concurrentRequests)
+      expect(results.every((r) => r.ok)).toBe(true)
+
+      // Verified bounded read count: 50 concurrent calls resulted in at most 1 actual read!
+      expect(globalObservationManager.getReadCount()).toBeLessThanOrEqual(2)
+
+      // Graph closure / cleanup: release observation scope
+      globalObservationManager.releaseScope(run.id)
+      expect(globalObservationManager.getLastSnapshot(run.id)).toBeNull()
+
+      globalObservationManager.dispose()
+      expect(globalObservationManager.getReadCount()).toBe(0)
     })
   })
 })

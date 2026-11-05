@@ -2,6 +2,7 @@ import { PLUGIN_HOST_API } from '../../../shared/plugins/workers/plugin-host-api
 import { bind, type BoundPluginHostMethod } from './plugin-host-method-bind'
 import { PluginHostCallError } from './plugin-host-call-scope'
 import { projectScopedOrchestrationGraph } from './orchestration-graph-projection'
+import { globalObservationManager } from './orchestration-observation-scope'
 
 const api = PLUGIN_HOST_API
 
@@ -13,15 +14,19 @@ export const PLUGIN_ORCHESTRATION_HANDLERS: {
     api['orchestration.getScopedGraph'],
     async (params, { services }) => {
       const db = services.orchestration?.getOrchestrationDb() ?? null
-      const context = await services.resolveActiveWorktreeContext()
-      const terminals = context ? await services.listWorktreeTerminals(context.worktreeId) : []
-      const agentStatuses = services.listAgentStatuses()
+      const scopeKey = params?.rootRunId ?? params?.rootHandle ?? 'active'
 
-      return projectScopedOrchestrationGraph({
-        db,
-        params,
-        terminals,
-        agentStatuses
+      return globalObservationManager.executeBoundedRead(scopeKey, async () => {
+        const context = await services.resolveActiveWorktreeContext()
+        const terminals = context ? await services.listWorktreeTerminals(context.worktreeId) : []
+        const agentStatuses = services.listAgentStatuses()
+
+        return projectScopedOrchestrationGraph({
+          db,
+          params,
+          terminals,
+          agentStatuses
+        })
       })
     }
   ),
