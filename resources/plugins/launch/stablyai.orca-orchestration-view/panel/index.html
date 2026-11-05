@@ -437,6 +437,17 @@
       stroke-linecap: round;
     }
 
+    .edge-path.surveillance {
+      stroke: #3b82f6;
+      stroke-width: 2px;
+      stroke-dasharray: 6 4;
+    }
+
+    .edge-path.delegation {
+      stroke: var(--border);
+      stroke-width: 1.5px;
+    }
+
     #node-container {
       position: absolute;
       top: 0;
@@ -498,6 +509,16 @@
       background: color-mix(in srgb, var(--primary) 15%, var(--card));
       color: var(--fg);
       border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+    }
+
+    .badge-role.watcher {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+      border: 1px dashed rgba(59, 130, 246, 0.5);
+    }
+
+    .node-card.role-watcher {
+      border-left: 3px dashed #3b82f6;
     }
 
     .badge-cli {
@@ -1192,7 +1213,9 @@
 
         function positionSubtree(nodeId, depth) {
           const children = (childrenMap.get(nodeId) || []).filter(c => visibleNodes.has(c));
-          const y = 40 + depth * VERTICAL_GAP;
+          const node = nodesById.get(nodeId);
+          const effectiveDepth = node && node.role === 'watcher' ? (node.depth || 0) : depth;
+          const y = 40 + effectiveDepth * VERTICAL_GAP;
 
           if (children.length === 0) {
             const x = currentLeafX;
@@ -1213,26 +1236,42 @@
         roots.filter(r => visibleNodes.has(r)).forEach(r => positionSubtree(r, 0));
 
         // Render Edges
-        visibleNodes.forEach(nodeId => {
-          const parentPos = nodePositions.get(nodeId);
-          if (!parentPos) return;
+        const edgesToRender = (graphData.edges && graphData.edges.length > 0)
+          ? graphData.edges
+          : Array.from(childrenMap.entries()).flatMap(([pId, cIds]) => cIds.map(cId => ({ from: pId, to: cId, linkType: 'delegation' })));
 
-          const children = (childrenMap.get(nodeId) || []).filter(c => visibleNodes.has(c));
-          children.forEach(childId => {
-            const childPos = nodePositions.get(childId);
-            if (!childPos) return;
+        edgesToRender.forEach(edge => {
+          if (!visibleNodes.has(edge.from) || !visibleNodes.has(edge.to)) return;
+          const fromPos = nodePositions.get(edge.from);
+          const toPos = nodePositions.get(edge.to);
+          if (!fromPos || !toPos) return;
 
-            const x1 = parentPos.x + CARD_WIDTH / 2;
-            const y1 = parentPos.y + 130;
-            const x2 = childPos.x + CARD_WIDTH / 2;
-            const y2 = childPos.y;
+          const isSurveillance = edge.linkType === 'surveillance';
+          const x1 = fromPos.x + CARD_WIDTH / 2;
+          const y1 = fromPos.y + 130;
+          const x2 = toPos.x + CARD_WIDTH / 2;
+          const y2 = toPos.y;
 
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            const midY = (y1 + y2) / 2;
-            path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
-            path.setAttribute('class', 'edge-path');
-            edgeSvg.appendChild(path);
-          });
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          const midY = (y1 + y2) / 2;
+          path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+          const edgeClass = isSurveillance ? 'edge-path surveillance' : 'edge-path delegation';
+          path.setAttribute('class', edgeClass);
+          path.setAttribute('data-link-type', edge.linkType || 'delegation');
+          path.setAttribute('data-from', edge.from);
+          path.setAttribute('data-to', edge.to);
+
+          if (isSurveillance) {
+            const fromNode = nodesById.get(edge.from);
+            const toNode = nodesById.get(edge.to);
+            const fromName = fromNode ? fromNode.name : edge.from;
+            const toName = toNode ? toNode.name : edge.to;
+            path.setAttribute('aria-label', `Surveillance: ${fromName} monitors ${toName}`);
+            const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            titleEl.textContent = `Surveillance: ${fromName} monitors ${toName}`;
+            path.appendChild(titleEl);
+          }
+          edgeSvg.appendChild(path);
         });
 
         // Render Node Cards
@@ -1242,7 +1281,7 @@
           if (!node || !pos) return;
 
           const card = document.createElement('div');
-          card.className = 'node-card' + (node.id === selectedNodeId ? ' selected' : '');
+          card.className = 'node-card' + (node.id === selectedNodeId ? ' selected' : '') + ` role-${node.role}`;
           if (node.attention) {
             card.classList.add('has-attention', 'attention-' + node.attention.category);
           }
@@ -1264,8 +1303,15 @@
           badgeGroup.className = 'badge-group';
 
           const roleBadge = document.createElement('span');
-          roleBadge.className = 'badge badge-role';
-          roleBadge.textContent = node.role === 'root-orchestrator' ? 'Root' : node.role === 'orchestrator' ? 'Orchestrator' : 'Worker';
+          roleBadge.className = 'badge badge-role' + (node.role === 'watcher' ? ' watcher' : '');
+          roleBadge.textContent =
+            node.role === 'root-orchestrator'
+              ? 'Root'
+              : node.role === 'orchestrator'
+                ? 'Orchestrator'
+                : node.role === 'watcher'
+                  ? 'Watcher'
+                  : 'Worker';
 
           const cliBadge = document.createElement('span');
           cliBadge.className = 'badge badge-cli';

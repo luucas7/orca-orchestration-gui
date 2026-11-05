@@ -360,9 +360,21 @@ describe('orchestration host methods', () => {
         })
 
         // Verify edges
-        expect(graph.edges).toContainEqual({ from: rootNode.id, to: leadNode!.id })
-        expect(graph.edges).toContainEqual({ from: leadNode!.id, to: codexNode!.id })
-        expect(graph.edges).toContainEqual({ from: leadNode!.id, to: opencodeNode!.id })
+        expect(graph.edges).toContainEqual({
+          from: rootNode.id,
+          to: leadNode!.id,
+          linkType: 'delegation'
+        })
+        expect(graph.edges).toContainEqual({
+          from: leadNode!.id,
+          to: codexNode!.id,
+          linkType: 'delegation'
+        })
+        expect(graph.edges).toContainEqual({
+          from: leadNode!.id,
+          to: opencodeNode!.id,
+          linkType: 'delegation'
+        })
       }
     })
   })

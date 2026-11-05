@@ -190,7 +190,7 @@ export function projectTaskNodes(options: TaskNodesProjectionOptions): TaskNodes
     }
 
     nodes.push(node)
-    edges.push({ from: parentId, to: nodeId })
+    edges.push({ from: parentId, to: nodeId, linkType: 'delegation' })
 
     if (dispatch) {
       nodeByDispatchId.set(dispatch.id, node)

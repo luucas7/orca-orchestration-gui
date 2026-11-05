@@ -3,12 +3,14 @@ import { bind, type BoundPluginHostMethod } from './plugin-host-method-bind'
 import { PluginHostCallError } from './plugin-host-call-scope'
 import { projectScopedOrchestrationGraph } from './orchestration-graph-projection'
 import { globalObservationManager } from './orchestration-observation-scope'
+import { insertSurveillanceLink } from '../../runtime/orchestration/surveillance/orchestration-surveillance-store'
 
 const api = PLUGIN_HOST_API
 
 export const PLUGIN_ORCHESTRATION_HANDLERS: {
   'orchestration.getScopedGraph': BoundPluginHostMethod
   'orchestration.navigateTerminal': BoundPluginHostMethod
+  'orchestration.declareSurveillanceLink': BoundPluginHostMethod
 } = {
   'orchestration.getScopedGraph': bind(
     api['orchestration.getScopedGraph'],
@@ -55,6 +57,21 @@ export const PLUGIN_ORCHESTRATION_HANDLERS: {
         navigated: Boolean(answer?.focus?.navigated),
         tabId: answer?.focus?.tabId ?? null,
         worktreeId: answer?.focus?.worktreeId ?? null
+      }
+    }
+  ),
+  'orchestration.declareSurveillanceLink': bind(
+    api['orchestration.declareSurveillanceLink'],
+    async (params, { services, scope }) => {
+      scope.assertActive()
+      const db = services.orchestration?.getOrchestrationDb() ?? null
+      if (!db) {
+        throw new PluginHostCallError('unavailable', 'orchestration database is not available')
+      }
+      const link = insertSurveillanceLink(db, params)
+      return {
+        declared: true,
+        link
       }
     }
   )

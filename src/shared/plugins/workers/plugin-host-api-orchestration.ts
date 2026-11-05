@@ -1,7 +1,12 @@
 import { z } from 'zod'
 import { ALL_SURFACES, FRAMES_ONLY, spec } from './plugin-host-method-spec'
 
-export const ORCHESTRATION_NODE_ROLES = ['root-orchestrator', 'orchestrator', 'worker'] as const
+export const ORCHESTRATION_NODE_ROLES = [
+  'root-orchestrator',
+  'orchestrator',
+  'worker',
+  'watcher'
+] as const
 export type OrchestrationNodeRole = (typeof ORCHESTRATION_NODE_ROLES)[number]
 
 export const ORCHESTRATION_ATTENTION_CATEGORIES = [
@@ -88,10 +93,14 @@ export const orchestrationNodeSchema = z
   .strict()
 export type OrchestrationNode = z.infer<typeof orchestrationNodeSchema>
 
+export const ORCHESTRATION_LINK_TYPES = ['delegation', 'surveillance'] as const
+export type OrchestrationLinkType = (typeof ORCHESTRATION_LINK_TYPES)[number]
+
 export const orchestrationEdgeSchema = z
   .object({
     from: z.string().min(1).max(512),
-    to: z.string().min(1).max(512)
+    to: z.string().min(1).max(512),
+    linkType: z.enum(ORCHESTRATION_LINK_TYPES).default('delegation')
   })
   .strict()
 export type OrchestrationEdge = z.infer<typeof orchestrationEdgeSchema>
@@ -118,6 +127,48 @@ export const orchestrationGetScopedGraphParams = z
     staleSource: z.boolean().optional()
   })
   .optional()
+
+export const surveillanceLinkSchema = z
+  .object({
+    id: z.string().min(1).max(512),
+    watcherHandle: z.string().max(1024).nullable(),
+    watcherOrcaSessionId: z.string().max(256).nullable(),
+    watcherName: z.string().max(512),
+    watcherCli: z.string().max(128),
+    targetRunId: z.string().max(512),
+    targetNodeId: z.string().max(512).nullable(),
+    targetTaskId: z.string().max(512).nullable(),
+    targetDispatchId: z.string().max(512).nullable(),
+    declaredBy: z.string().max(512),
+    createdAt: z.string().max(128)
+  })
+  .strict()
+export type SurveillanceLink = z.infer<typeof surveillanceLinkSchema>
+
+export const orchestrationDeclareSurveillanceLinkParams = z.strictObject({
+  watcherHandle: z.string().min(1).max(1024).nullable().optional(),
+  watcherOrcaSessionId: z.string().min(1).max(256).nullable().optional(),
+  watcherName: z.string().min(1).max(512),
+  watcherCli: z.string().min(1).max(128),
+  targetRunId: z.string().min(1).max(512),
+  targetNodeId: z.string().min(1).max(512).nullable().optional(),
+  targetTaskId: z.string().min(1).max(512).nullable().optional(),
+  targetDispatchId: z.string().min(1).max(512).nullable().optional(),
+  declaredBy: z.string().min(1).max(512)
+})
+export type OrchestrationDeclareSurveillanceLinkParams = z.infer<
+  typeof orchestrationDeclareSurveillanceLinkParams
+>
+
+export const orchestrationDeclareSurveillanceLinkResult = z
+  .object({
+    declared: z.boolean(),
+    link: surveillanceLinkSchema
+  })
+  .strict()
+export type OrchestrationDeclareSurveillanceLinkResult = z.infer<
+  typeof orchestrationDeclareSurveillanceLinkResult
+>
 
 export const orchestrationNavigateTerminalParams = z.strictObject({
   terminalHandle: z.string().min(1).max(1024)
@@ -153,5 +204,15 @@ export const PLUGIN_ORCHESTRATION_HOST_API = {
     surfaces: FRAMES_ONLY,
     params: orchestrationNavigateTerminalParams,
     result: orchestrationNavigateTerminalResult
+  }),
+  'orchestration.declareSurveillanceLink': spec({
+    summary: 'Explicitly declares a Surveillance link from a Watcher to an agent it monitors.',
+    since: 2,
+    scope: 'active-workspace',
+    capability: null,
+    mutation: true,
+    surfaces: ALL_SURFACES,
+    params: orchestrationDeclareSurveillanceLinkParams,
+    result: orchestrationDeclareSurveillanceLinkResult
   })
 }

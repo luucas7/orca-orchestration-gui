@@ -12,6 +12,7 @@ import {
   createSourceDisconnectAttentionItem
 } from './orchestration-graph-attention'
 import { projectTaskNodes } from './orchestration-task-nodes'
+import { projectWatcherNodesAndEdges } from './orchestration-watcher-nodes'
 
 export type OrchestrationGraphProjectionOptions = {
   db: OrchestrationDb | null
@@ -174,8 +175,18 @@ export function projectScopedOrchestrationGraph(
     agentByTerminalId
   })
 
-  const nodes: OrchestrationNode[] = [rootNode, ...taskResult.nodes]
-  const edges = taskResult.edges
+  // 5. Project surveillance links and watcher nodes
+  const watcherResult = projectWatcherNodesAndEdges({
+    db,
+    runId: selectedRun.id,
+    rootNodeId,
+    existingNodes: [rootNode, ...taskResult.nodes],
+    terminalTitleByHandle,
+    agentByTerminalId
+  })
+
+  const nodes: OrchestrationNode[] = [rootNode, ...taskResult.nodes, ...watcherResult.watcherNodes]
+  const edges = [...taskResult.edges, ...watcherResult.surveillanceEdges]
   const attentionItems = rootAttention
     ? [rootAttention, ...taskResult.attentionItems]
     : [...taskResult.attentionItems]

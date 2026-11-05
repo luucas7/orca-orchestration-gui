@@ -133,8 +133,8 @@ describe('orchestration view panel (headless rendered check)', () => {
       }
     ],
     edges: [
-      { from: 'node-root', to: 'node-child-1' },
-      { from: 'node-child-1', to: 'node-worker-1' }
+      { from: 'node-root', to: 'node-child-1', linkType: 'delegation' },
+      { from: 'node-child-1', to: 'node-worker-1', linkType: 'delegation' }
     ],
     emptyReason: null,
     attentionItems: [],
@@ -472,7 +472,7 @@ describe('orchestration view panel (headless rendered check)', () => {
         parentId: 'node-root',
         depth: 1
       })
-      edges.push({ from: 'node-root', to: coordId })
+      edges.push({ from: 'node-root', to: coordId, linkType: 'delegation' })
 
       for (let w = 1; w <= 6; w++) {
         const workerNum = (c - 1) * 6 + w
@@ -503,7 +503,7 @@ describe('orchestration view panel (headless rendered check)', () => {
               }
             : undefined
         })
-        edges.push({ from: coordId, to: workerId })
+        edges.push({ from: coordId, to: workerId, linkType: 'delegation' })
       }
     }
 
